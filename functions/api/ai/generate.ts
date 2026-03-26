@@ -83,7 +83,7 @@ async function generateAnthropic(req: AIRequest, apiKey: string): Promise<AIActi
 
 async function generateGemini(req: AIRequest, apiKey: string): Promise<AIAction> {
   const userPrompt = `${SYSTEM_PROMPT}\n\n${buildPrompt(req)}`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const res = await fetch(url, {
     method: 'POST',

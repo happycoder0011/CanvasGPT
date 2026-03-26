@@ -108,7 +108,7 @@ async function streamGemini(req: AIRequest, apiKey: string): Promise<Response> {
     generationConfig: { maxOutputTokens: 4096 },
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
   const res = await fetch(url, {
     method: 'POST',
