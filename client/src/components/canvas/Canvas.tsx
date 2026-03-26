@@ -1,10 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCanvasGestures } from '@/hooks/useCanvasGestures';
 import { useInlineChatStore } from '@/stores/inline-chat.store';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { InlineChatBubble } from '@/components/inline-chat/InlineChatBubble';
-import type { BlockType, Position } from '@/types';
+import type { BlockType } from '@/types';
 
 export function Canvas() {
   const viewport = useCanvasStore((s) => s.viewport);
@@ -14,14 +14,29 @@ export function Canvas() {
   const addBlock = useCanvasStore((s) => s.addBlock);
   const deselectAll = useCanvasStore((s) => s.deselectAll);
   const chats = useInlineChatStore((s) => s.chats);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const { onWheel, onPointerDown, onPointerMove, onPointerUp, screenToCanvas } = useCanvasGestures();
 
+  // Check if the click landed on the canvas background (not on a block)
+  const isCanvasBackground = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // Walk up from target — if we hit a block before the canvas root, it's not background
+    let el: HTMLElement | null = target;
+    while (el && el !== canvasRef.current) {
+      if (el.dataset.canvasBlock === 'true') return false;
+      el = el.parentElement;
+    }
+    return true;
+  }, []);
+
   const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return;
+    if (!isCanvasBackground(e)) return;
 
     const pos = screenToCanvas(e.clientX, e.clientY);
     const toolToBlockType: Record<string, BlockType> = {
+      select: 'text',
+      pan: 'text',
       text: 'text',
       code: 'code',
       note: 'note',
@@ -32,16 +47,17 @@ export function Canvas() {
 
     const blockType = toolToBlockType[activeTool] ?? 'text';
     addBlock(blockType, pos);
-  }, [activeTool, addBlock, screenToCanvas]);
+  }, [activeTool, addBlock, screenToCanvas, isCanvasBackground]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (isCanvasBackground(e)) {
       deselectAll();
     }
-  }, [deselectAll]);
+  }, [deselectAll, isCanvasBackground]);
 
   return (
     <div
+      ref={canvasRef}
       className="absolute inset-0 overflow-hidden bg-canvas-bg"
       onWheel={onWheel}
       onPointerDown={onPointerDown}
@@ -80,7 +96,11 @@ export function Canvas() {
         {blockOrder.map((id) => {
           const block = blocks[id];
           if (!block) return null;
-          return <BlockRenderer key={id} block={block} />;
+          return (
+            <div key={id} data-canvas-block="true">
+              <BlockRenderer block={block} />
+            </div>
+          );
         })}
       </div>
 

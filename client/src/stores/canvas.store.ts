@@ -4,24 +4,14 @@ import type { Block, BlockType, CanvasViewport, Position, Size, ToolMode } from 
 import { generateId } from '@/lib/utils';
 
 interface CanvasState {
-  // Viewport
   viewport: CanvasViewport;
-
-  // Blocks
   blocks: Record<string, Block>;
   blockOrder: string[];
-
-  // Selection
-  selectedBlockIds: Set<string>;
-
-  // Tool
+  selectedBlockIds: string[];
   activeTool: ToolMode;
-
-  // Drag state
   isDragging: boolean;
   dragOffset: Position | null;
 
-  // Actions
   setViewport: (viewport: Partial<CanvasViewport>) => void;
   pan: (dx: number, dy: number) => void;
   zoom: (factor: number, center?: Position) => void;
@@ -34,6 +24,7 @@ interface CanvasState {
   selectBlock: (id: string, additive?: boolean) => void;
   deselectAll: () => void;
   selectMultiple: (ids: string[]) => void;
+  isSelected: (id: string) => boolean;
 
   setActiveTool: (tool: ToolMode) => void;
 
@@ -60,7 +51,7 @@ export const useCanvasStore = create<CanvasState>()(
     viewport: { x: 0, y: 0, zoom: 1 },
     blocks: {},
     blockOrder: [],
-    selectedBlockIds: new Set(),
+    selectedBlockIds: [],
     activeTool: 'select',
     isDragging: false,
     dragOffset: null,
@@ -122,7 +113,7 @@ export const useCanvasStore = create<CanvasState>()(
       set((state) => {
         delete state.blocks[id];
         state.blockOrder = state.blockOrder.filter((bid) => bid !== id);
-        state.selectedBlockIds.delete(id);
+        state.selectedBlockIds = state.selectedBlockIds.filter((sid) => sid !== id);
       }),
 
     duplicateBlock: (id) => {
@@ -148,25 +139,28 @@ export const useCanvasStore = create<CanvasState>()(
     selectBlock: (id, additive) =>
       set((state) => {
         if (!additive) {
-          state.selectedBlockIds = new Set([id]);
+          state.selectedBlockIds = [id];
         } else {
-          if (state.selectedBlockIds.has(id)) {
-            state.selectedBlockIds.delete(id);
+          const idx = state.selectedBlockIds.indexOf(id);
+          if (idx >= 0) {
+            state.selectedBlockIds.splice(idx, 1);
           } else {
-            state.selectedBlockIds.add(id);
+            state.selectedBlockIds.push(id);
           }
         }
       }),
 
     deselectAll: () =>
       set((state) => {
-        state.selectedBlockIds = new Set();
+        state.selectedBlockIds = [];
       }),
 
     selectMultiple: (ids) =>
       set((state) => {
-        state.selectedBlockIds = new Set(ids);
+        state.selectedBlockIds = [...ids];
       }),
+
+    isSelected: (id) => get().selectedBlockIds.includes(id),
 
     setActiveTool: (tool) =>
       set((state) => {

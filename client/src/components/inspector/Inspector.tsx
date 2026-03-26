@@ -13,7 +13,7 @@ export function Inspector() {
   const updateBlock = useCanvasStore((s) => s.updateBlock);
   const openChat = useInlineChatStore((s) => s.openChat);
 
-  const selectedIds = Array.from(selectedBlockIds);
+  const selectedIds = selectedBlockIds;
 
   if (selectedIds.length === 0) {
     return (

@@ -13,7 +13,7 @@ export function useKeyboard() {
       if (meta && e.key === 'k') {
         e.preventDefault();
 
-        const selectedIds = Array.from(store.selectedBlockIds);
+        const selectedIds = [...store.selectedBlockIds];
         if (selectedIds.length !== 1) return;
 
         const blockId = selectedIds[0]!;
@@ -61,14 +61,14 @@ export function useKeyboard() {
       // Delete / Backspace — Remove selected blocks
       if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditingText()) {
         e.preventDefault();
-        const selectedIds = Array.from(store.selectedBlockIds);
+        const selectedIds = [...store.selectedBlockIds];
         selectedIds.forEach((id) => store.removeBlock(id));
       }
 
       // Cmd+D — Duplicate
       if (meta && e.key === 'd') {
         e.preventDefault();
-        const selectedIds = Array.from(store.selectedBlockIds);
+        const selectedIds = [...store.selectedBlockIds];
         selectedIds.forEach((id) => store.duplicateBlock(id));
       }
 
