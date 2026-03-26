@@ -27,23 +27,24 @@ function useSeedBlocks() {
   }, []);
 }
 
-function ApiKeyButton() {
-  const apiKey = useSettingsStore((s) => s.apiKey);
+function ProviderButton() {
+  const provider = useSettingsStore((s) => s.provider);
   const toggleSettings = useSettingsStore((s) => s.toggleSettings);
-  const hasKey = apiKey.length > 0;
+
+  const isFree = provider === 'gemini-free';
 
   return (
     <button
       onClick={toggleSettings}
       className={cn(
         'absolute top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all',
-        hasKey
+        isFree
           ? 'bg-canvas-surface/90 border-green-500/30 text-green-400 hover:bg-canvas-surface'
-          : 'bg-canvas-highlight/20 border-canvas-highlight/50 text-canvas-highlight hover:bg-canvas-highlight/30 animate-pulse',
+          : 'bg-canvas-surface/90 border-canvas-accent/30 text-canvas-accent hover:bg-canvas-surface',
       )}
     >
       <Key className="w-3.5 h-3.5" />
-      {hasKey ? 'API Key Set' : 'Add API Key'}
+      {isFree ? 'Gemini Flash (Free)' : 'Claude (Pro)'}
     </button>
   );
 }
@@ -62,7 +63,7 @@ export default function App() {
         <span className="text-canvas-text text-sm font-semibold tracking-tight">CanvasGPT</span>
       </div>
 
-      <ApiKeyButton />
+      <ProviderButton />
       <Toolbar />
       <Canvas />
       <Inspector />

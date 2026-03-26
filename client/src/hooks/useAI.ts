@@ -10,9 +10,10 @@ export function useAI() {
   const { addMessage, appendToLastAssistantMessage, setStatus } = useInlineChatStore.getState();
 
   const streamAI = useCallback(async (chatId: string, request: AIRequest) => {
-    const { apiKey } = useSettingsStore.getState();
+    const { apiKey, provider } = useSettingsStore.getState();
 
-    if (!apiKey) {
+    // Anthropic requires a client-side key
+    if (provider === 'anthropic' && !apiKey) {
       useSettingsStore.getState().setShowSettings(true);
       return;
     }
@@ -25,16 +26,26 @@ export function useAI() {
     setStatus(chatId, 'streaming');
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Provider': provider,
+      };
+
+      // Only send client key for anthropic
+      if (provider === 'anthropic' && apiKey) {
+        headers['X-API-Key'] = apiKey;
+      }
+
       const response = await fetch('/api/ai/stream', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': apiKey,
-        },
+        headers,
         body: JSON.stringify(request),
       });
 
-      if (!response.ok) throw new Error('AI request failed');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Request failed' }));
+        throw new Error((err as { error?: string }).error ?? 'AI request failed');
+      }
       if (!response.body) throw new Error('No response body');
 
       const reader = response.body.getReader();
@@ -83,7 +94,8 @@ export function useAI() {
       }
     } catch (error) {
       setStatus(chatId, 'error');
-      appendToLastAssistantMessage(chatId, '\n\n[Error: Failed to get AI response]');
+      const msg = error instanceof Error ? error.message : 'Failed to get AI response';
+      appendToLastAssistantMessage(chatId, `\n\n[Error: ${msg}]`);
     }
   }, [addMessage, appendToLastAssistantMessage, setStatus]);
 

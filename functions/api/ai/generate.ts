@@ -59,42 +59,75 @@ function parseAIResponse(text: string, blockId: string): AIAction {
   const contentMatch = text.match(/CONTENT:\n?([\s\S]*)/);
 
   let action: AIAction = { action: 'replace', blockId, content: '' };
-
   if (actionMatch) {
     try {
       const parsed = JSON.parse(actionMatch[1]);
       action = { ...action, ...parsed, blockId };
     } catch {}
   }
-
   action.content = contentMatch ? contentMatch[1].trim() : text;
   return action;
 }
 
-export const onRequestPost: PagesFunction = async (context) => {
-  const apiKey = context.request.headers.get('X-API-Key');
-  if (!apiKey) {
-    return Response.json({ error: 'Missing API key. Add your Anthropic key in settings.' }, { status: 401 });
+async function generateAnthropic(req: AIRequest, apiKey: string): Promise<AIAction> {
+  const client = new Anthropic({ apiKey });
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: buildPrompt(req) }],
+  });
+  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  return parseAIResponse(text, req.blockId);
+}
+
+async function generateGemini(req: AIRequest, apiKey: string): Promise<AIAction> {
+  const userPrompt = `${SYSTEM_PROMPT}\n\n${buildPrompt(req)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: userPrompt }] }],
+      generationConfig: { maxOutputTokens: 4096 },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Gemini API error: ${res.status}`);
   }
 
+  const data = await res.json() as any;
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  return parseAIResponse(text, req.blockId);
+}
+
+export const onRequestPost: PagesFunction<{ GEMINI_API_KEY: string }> = async (context) => {
   const req = await context.request.json() as AIRequest;
+  const provider = context.request.headers.get('X-Provider') ?? 'gemini-free';
 
   if (!req.prompt || !req.blockId) {
     return Response.json({ error: 'Missing required fields: prompt, blockId' }, { status: 400 });
   }
 
   try {
-    const client = new Anthropic({ apiKey });
+    let action: AIAction;
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildPrompt(req) }],
-    });
+    if (provider === 'anthropic') {
+      const apiKey = context.request.headers.get('X-API-Key');
+      if (!apiKey) {
+        return Response.json({ error: 'Missing Anthropic API key' }, { status: 401 });
+      }
+      action = await generateAnthropic(req, apiKey);
+    } else {
+      const geminiKey = context.env.GEMINI_API_KEY;
+      if (!geminiKey) {
+        return Response.json({ error: 'Gemini API key not configured on server' }, { status: 500 });
+      }
+      action = await generateGemini(req, geminiKey);
+    }
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    const action = parseAIResponse(text, req.blockId);
     return Response.json(action);
   } catch (error) {
     return Response.json({ error: 'AI generation failed' }, { status: 500 });
