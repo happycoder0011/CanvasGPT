@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useInlineChatStore } from '@/stores/inline-chat.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { AIRequest, AIAction, AIStreamChunk } from '@/types';
 
 export function useAI() {
@@ -9,7 +10,12 @@ export function useAI() {
   const { addMessage, appendToLastAssistantMessage, setStatus } = useInlineChatStore.getState();
 
   const streamAI = useCallback(async (chatId: string, request: AIRequest) => {
-    const chatStore = useInlineChatStore.getState();
+    const { apiKey } = useSettingsStore.getState();
+
+    if (!apiKey) {
+      useSettingsStore.getState().setShowSettings(true);
+      return;
+    }
 
     // Add user message
     addMessage(chatId, { role: 'user', content: request.prompt });
@@ -21,7 +27,10 @@ export function useAI() {
     try {
       const response = await fetch('/api/ai/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
         body: JSON.stringify(request),
       });
 

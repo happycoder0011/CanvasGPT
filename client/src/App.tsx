@@ -2,9 +2,12 @@ import React from 'react';
 import { Canvas } from '@/components/canvas/Canvas';
 import { Toolbar } from '@/components/toolbar/Toolbar';
 import { Inspector } from '@/components/inspector/Inspector';
+import { ApiKeyModal } from '@/components/toolbar/ApiKeyModal';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { Sparkles } from 'lucide-react';
+import { useSettingsStore } from '@/stores/settings.store';
+import { Sparkles, Key } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Seed some example blocks on first load
 function useSeedBlocks() {
@@ -24,6 +27,27 @@ function useSeedBlocks() {
   }, []);
 }
 
+function ApiKeyButton() {
+  const apiKey = useSettingsStore((s) => s.apiKey);
+  const toggleSettings = useSettingsStore((s) => s.toggleSettings);
+  const hasKey = apiKey.length > 0;
+
+  return (
+    <button
+      onClick={toggleSettings}
+      className={cn(
+        'absolute top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all',
+        hasKey
+          ? 'bg-canvas-surface/90 border-green-500/30 text-green-400 hover:bg-canvas-surface'
+          : 'bg-canvas-highlight/20 border-canvas-highlight/50 text-canvas-highlight hover:bg-canvas-highlight/30 animate-pulse',
+      )}
+    >
+      <Key className="w-3.5 h-3.5" />
+      {hasKey ? 'API Key Set' : 'Add API Key'}
+    </button>
+  );
+}
+
 export default function App() {
   useKeyboard();
   useSeedBlocks();
@@ -38,9 +62,11 @@ export default function App() {
         <span className="text-canvas-text text-sm font-semibold tracking-tight">CanvasGPT</span>
       </div>
 
+      <ApiKeyButton />
       <Toolbar />
       <Canvas />
       <Inspector />
+      <ApiKeyModal />
     </div>
   );
 }

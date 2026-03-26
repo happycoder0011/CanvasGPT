@@ -71,7 +71,12 @@ function parseAIResponse(text: string, blockId: string): AIAction {
   return action;
 }
 
-export const onRequestPost: PagesFunction<{ ANTHROPIC_API_KEY: string }> = async (context) => {
+export const onRequestPost: PagesFunction = async (context) => {
+  const apiKey = context.request.headers.get('X-API-Key');
+  if (!apiKey) {
+    return Response.json({ error: 'Missing API key. Add your Anthropic key in settings.' }, { status: 401 });
+  }
+
   const req = await context.request.json() as AIRequest;
 
   if (!req.prompt || !req.blockId) {
@@ -79,7 +84,7 @@ export const onRequestPost: PagesFunction<{ ANTHROPIC_API_KEY: string }> = async
   }
 
   try {
-    const client = new Anthropic({ apiKey: context.env.ANTHROPIC_API_KEY });
+    const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
